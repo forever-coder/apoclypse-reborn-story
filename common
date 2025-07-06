@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Zombie Survival Game</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #222;
+      color: white;
+      font-family: Arial;
+    }
+    canvas {
+      background: #111;
+      display: block;
+    }
+    #healthBar {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      width: 200px;
+      height: 20px;
+      background: red;
+      border: 2px solid white;
+    }
+    #healthFill {
+      height: 100%;
+      background: lime;
+      width: 100%;
+    }
+    #message {
+      position: absolute;
+      top: 40px;
+      left: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="healthBar"><div id="healthFill"></div></div>
+  <div id="message">WASD to move | Mouse to shoot</div>
+  <canvas id="gameCanvas" width="800" height="500"></canvas>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let player = { x: 400, y: 250, size: 20, speed: 3, health: 100 };
+    let zombies = [];
+    let bullets = [];
+
+    function spawnZombie() {
+      const edge = Math.floor(Math.random() * 4);
+      let x = 0, y = 0;
+      if (edge === 0) { x = 0; y = Math.random() * canvas.height; }
+      if (edge === 1) { x = canvas.width; y = Math.random() * canvas.height; }
+      if (edge === 2) { y = 0; x = Math.random() * canvas.width; }
+      if (edge === 3) { y = canvas.height; x = Math.random() * canvas.width; }
+      zombies.push({ x, y, size: 20, speed: 1.5 });
+    }
+
+    function drawPlayer() {
+      ctx.fillStyle = "cyan";
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, player.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawZombies() {
+      ctx.fillStyle = "green";
+      zombies.forEach(z => {
+        ctx.beginPath();
+        ctx.arc(z.x, z.y, z.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    function drawBullets() {
+      ctx.fillStyle = "yellow";
+      bullets.forEach(b => {
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    function moveZombies() {
+      zombies.forEach(z => {
+        const dx = player.x - z.x;
+        const dy = player.y - z.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        z.x += (dx / dist) * z.speed;
+        z.y += (dy / dist) * z.speed;
+
+        if (dist < player.size + z.size) {
+          player.health -= 0.5;
+          updateHealthBar();
+        }
+      });
+    }
+
+    function updateHealthBar() {
+      const fill = document.getElementById("healthFill");
+      fill.style.width = Math.max(0, player.health) + "%";
+    }
+
+    function moveBullets() {
+      bullets.forEach(b => {
+        b.x += b.vx;
+        b.y += b.vy;
+      });
+    }
+
+    function checkBulletZombieCollision() {
+      bullets = bullets.filter(b => {
+        for (let i = 0; i < zombies.length; i++) {
+          const z = zombies[i];
+          const dx = b.x - z.x;
+          const dy = b.y - z.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < z.size) {
+            zombies.splice(i, 1);
+            return false;
+          }
+        }
+        return true;
+      });
+    }
+
+    function gameLoop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawPlayer();
+      drawZombies();
+      drawBullets();
+      moveZombies();
+      moveBullets();
+      checkBulletZombieCollision();
+
+      if (player.health <= 0) {
+        alert("Game Over");
+        window.location.reload();
+      }
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    const keys = {};
+    window.addEventListener("keydown", e => keys[e.key] = true);
+    window.addEventListener("keyup", e => keys[e.key] = false);
+
+    function updateMovement() {
+      if (keys["w"]) player.y -= player.speed;
+      if (keys["s"]) player.y += player.speed;
+      if (keys["a"]) player.x -= player.speed;
+      if (keys["d"]) player.x += player.speed;
+      requestAnimationFrame(updateMovement);
+    }
+
+    canvas.addEventListener("click", e => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const dx = mx - player.x;
+      const dy = my - player.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      bullets.push({ x: player.x, y: player.y, vx: (dx / dist) * 7, vy: (dy / dist) * 7 });
+    });
+
+    setInterval(spawnZombie, 2000);
+    gameLoop();
+    updateMovement();
+  </script>
+</body>
+</html>
